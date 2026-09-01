@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brand Logistics · Control Tower</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Recharts/2.5.0/Recharts.min.js"></script>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:#0B1120;color:#E2E8F0}
@@ -37,9 +38,26 @@ var CSV_URL = "data/ops-om-ar.csv";
 var REFRESH_MINUTES = 5;
 
 var e = React.createElement;
+// Envoltorio defensivo: si algun componente es undefined (ej. Recharts no cargo),
+// en vez de romper toda la app con "React error #130", renderiza un placeholder.
+var _e = e;
+e = function(type){
+  if(type===undefined || type===null){
+    return _e("div",{style:{padding:"16px",textAlign:"center",color:"#4B5563",fontSize:11,fontStyle:"italic"}},"\uD83D\uDCC8 gr\u00e1fico no disponible");
+  }
+  return _e.apply(null, arguments);
+};
 var useState = React.useState, useEffect = React.useEffect, useMemo = React.useMemo, useCallback = React.useCallback;
 var RC = window.Recharts || {};
 var BarChart=RC.BarChart,Bar=RC.Bar,XAxis=RC.XAxis,YAxis=RC.YAxis,Tooltip=RC.Tooltip,ResponsiveContainer=RC.ResponsiveContainer,PieChart=RC.PieChart,Pie=RC.Pie,Cell=RC.Cell,Legend=RC.Legend,AreaChart=RC.AreaChart,Area=RC.Area;
+// Si Recharts no cargo (CDN bloqueado o dependencia faltante), CHARTS_OK=false y
+// los graficos se reemplazan por un aviso, pero el resto del tablero (tablas,
+// numeros, filtros) funciona igual.
+var CHARTS_OK = !!(RC && RC.BarChart && RC.ResponsiveContainer && RC.PieChart);
+function SafeChart(render){
+  if(!CHARTS_OK) return e("div",{style:{padding:"20px",textAlign:"center",color:"#4B5563",fontSize:11,fontStyle:"italic"}},"\uD83D\uDCC8 Gr\u00e1fico no disponible (no se pudo cargar la librer\u00eda de gr\u00e1ficos). Las tablas y los n\u00fameros siguen funcionando.");
+  try{ return render(); }catch(ex){ return e("div",{style:{padding:"20px",textAlign:"center",color:"#4B5563",fontSize:11}},"Gr\u00e1fico no disponible"); }
+}
 
 // ============================================================
 // BUSINESS LOGIC (mirrors the analysis pipeline)
